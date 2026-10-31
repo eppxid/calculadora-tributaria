@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="description" content="Estimativa do imposto de hoje e de cada ano da transição da reforma tributária, de 2026 a 2033. O cálculo roda no seu navegador.">
+  <title>Calculadora da Reforma Tributária</title>
+  <link rel="icon" href="icone.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="estilo.css">
+  <script type="module" src="app.js"></script>
+</head>
+<body>
+  <a class="pular" href="#resultado">Ir para o resultado</a>
+
+  <header class="barra">
+    <img class="barra__marca" src="icone.svg" alt="" width="24" height="24">
+    <h1>Calculadora da Reforma Tributária</h1>
+    <p class="barra__escopo">CBS e IBS, de 2026 a 2033</p>
+    <div class="barra__acoes">
+      <a href="#metodo">Como calculamos</a>
+      <button type="button" class="btn" id="imprimir" hidden>Salvar em PDF</button>
+    </div>
+  </header>
+
+  <noscript><p class="aviso aviso--pagina">Esta calculadora precisa de JavaScript para funcionar.</p></noscript>
+
+  <main class="tela">
+    <form id="formulario" class="dados" novalidate autocomplete="off" aria-labelledby="t-dados">
+      <h2 id="t-dados">Sua empresa</h2>
+
+      <div class="campo">
+        <label for="faturamento">Faturamento do mês</label>
+        <div class="entrada entrada--grande">
+          <span class="entrada__pre" aria-hidden="true">R$</span>
+          <input id="faturamento" type="text" inputmode="decimal" placeholder="0,00" data-tipo="dinheiro" aria-required="true" aria-describedby="aj-fat">
+        </div>
+        <p class="ajuda" id="aj-fat">Receita bruta de um mês típico.</p>
+      </div>
+
+      <fieldset>
+        <legend>Regime tributário</legend>
+        <div class="regimes">
+          <label><input type="radio" name="regime" value="mei"><span>MEI</span></label>
+          <label><input type="radio" name="regime" value="tradicional" checked><span>Simples tradicional</span></label>
+          <label><input type="radio" name="regime" value="hibrido"><span>Simples híbrido</span></label>
+          <label><input type="radio" name="regime" value="presumido"><span>Lucro Presumido</span></label>
+          <label><input type="radio" name="regime" value="real"><span>Lucro Real</span></label>
+        </div>
+        <p class="ajuda" id="ajuda-regime"></p>
+      </fieldset>
+
+      <fieldset>
+        <legend>Atividade</legend>
+        <div class="segmentado">
+          <label><input type="radio" name="atividade" value="comercio"><span>Comércio</span></label>
+          <label><input type="radio" name="atividade" value="industria"><span>Indústria</span></label>
+          <label><input type="radio" name="atividade" value="servico" checked><span>Serviço</span></label>
+        </div>
+      </fieldset>
+
+      <div class="campo" id="campo-anexo" hidden>
+        <label for="anexo">Anexo do Simples</label>
+        <select id="anexo" aria-describedby="ajuda-anexo">
+          <option value="III">Anexo III</option>
+          <option value="IV">Anexo IV</option>
+          <option value="V">Anexo V</option>
+          <option value="fatorR">Automático pelo Fator R</option>
+        </select>
+        <p class="ajuda" id="ajuda-anexo" hidden>Folha dividida pela receita de 12 meses. Com 28% ou mais, vale o Anexo III. Abaixo disso, o Anexo V.</p>
+      </div>
+
+      <div class="campo" id="campo-folha" hidden>
+        <label for="folha12">Folha de pagamento em 12 meses</label>
+        <div class="entrada">
+          <span class="entrada__pre" aria-hidden="true">R$</span>
+          <input id="folha12" type="text" inputmode="decimal" placeholder="0,00" data-tipo="dinheiro">
+        </div>
+      </div>
+
+      <div class="campo">
+        <label for="grupo">Tratamento da CBS e do IBS</label>
+        <select id="grupo" aria-describedby="ajuda-grupo"></select>
+        <p class="ajuda" id="ajuda-grupo" hidden></p>
+      </div>
+
+      <div class="ajustes">
+        <details id="d-receita">
+          <summary><span>Receita em 12 meses</span><span class="ajustes__valor" id="r-receita"></span></summary>
+          <div class="campo">
+            <label for="receita12">Receita bruta dos últimos 12 meses</label>
+            <div class="entrada">
+              <span class="entrada__pre" aria-hidden="true">R$</span>
+              <input id="receita12" type="text" inputmode="decimal" placeholder="12 × faturamento" data-tipo="dinheiro" aria-describedby="aj-receita">
+            </div>
+            <p class="ajuda" id="aj-receita">Define a faixa do Simples. Vazio vale 12 vezes o faturamento.</p>
+          </div>
+        </details>
+
+        <details id="d-compras">
+          <summary><span>Compras e clientes</span><span class="ajustes__valor" id="r-compras"></span></summary>
+          <div class="campo">
+            <label for="compras">Compras do mês, fornecedor do regime regular</label>
+            <div class="entrada">
+              <span class="entrada__pre" aria-hidden="true">R$</span>
+              <input id="compras" type="text" inputmode="decimal" placeholder="0,00" data-tipo="dinheiro">
+            </div>
+          </div>
+          <div class="campo">
+            <label for="comprasSimples">Compras do mês, fornecedor do Simples</label>
+            <div class="entrada">
+              <span class="entrada__pre" aria-hidden="true">R$</span>
+              <input id="comprasSimples" type="text" inputmode="decimal" placeholder="0,00" data-tipo="dinheiro" aria-describedby="aj-compras-simples">
+            </div>
+            <p class="ajuda" id="aj-compras-simples">Geram crédito menor, estimado pela faixa inicial do Simples.</p>
+          </div>
+          <div class="campo">
+            <label for="vendas">Vendas para empresas</label>
+            <div class="entrada">
+              <input id="vendas" type="text" inputmode="decimal" placeholder="0" data-tipo="pct" data-max="100" aria-describedby="aj-vendas">
+              <span class="entrada__pos" aria-hidden="true">%</span>
+            </div>
+            <p class="ajuda" id="aj-vendas">Parte das vendas para clientes que aproveitam o crédito.</p>
+          </div>
+        </details>
+
+        <details id="d-local">
+          <summary><span>Alíquotas locais</span><span class="ajustes__valor" id="r-local"></span></summary>
+          <div class="campo" id="campo-uf" hidden>
+            <label for="uf">Estado</label>
+            <select id="uf"></select>
+          </div>
+          <div class="campo" id="campo-icms" hidden>
+            <label for="icms">ICMS</label>
+            <div class="entrada">
+              <input id="icms" type="text" inputmode="decimal" data-tipo="pct" data-max="40" aria-describedby="aj-icms">
+              <span class="entrada__pos" aria-hidden="true">%</span>
+            </div>
+            <p class="ajuda" id="aj-icms">O estado preenche este campo. Você pode editar.</p>
+          </div>
+          <div class="campo" id="campo-iss">
+            <label for="iss">ISS</label>
+            <div class="entrada">
+              <input id="iss" type="text" inputmode="decimal" value="5,00" data-tipo="pct" data-min="2" data-max="5" aria-describedby="aj-iss">
+              <span class="entrada__pos" aria-hidden="true">%</span>
+            </div>
+            <p class="ajuda" id="aj-iss">De 2% a 5%, conforme o município.</p>
+          </div>
+          <div class="campo" id="campo-ipi" hidden>
+            <label for="ipi">IPI</label>
+            <div class="entrada">
+              <input id="ipi" type="text" inputmode="decimal" placeholder="0" data-tipo="pct" data-max="100">
+              <span class="entrada__pos" aria-hidden="true">%</span>
+            </div>
+          </div>
+          <label class="marca" id="campo-ipi-mantido" hidden>
+            <input type="checkbox" id="ipiMantido">
+            <span>Produto com IPI mantido (Zona Franca de Manaus)</span>
+          </label>
+        </details>
+
+        <details id="d-renda">
+          <summary><span>IRPJ, CSLL e CPP</span><span class="ajustes__valor" id="r-renda"></span></summary>
+          <label class="marca">
+            <input type="checkbox" id="incluirRenda" aria-describedby="aj-renda">
+            <span>Incluir na conta</span>
+          </label>
+          <p class="ajuda" id="aj-renda"></p>
+          <div class="campo" id="campo-margem" hidden>
+            <label for="margem">Lucro estimado</label>
+            <div class="entrada">
+              <input id="margem" type="text" inputmode="decimal" value="10,00" data-tipo="pct" data-max="100">
+              <span class="entrada__pos" aria-hidden="true">%</span>
+            </div>
+          </div>
+        </details>
+
+        <details id="d-repasse">
+          <summary><span>Preço ao cliente</span><span class="ajustes__valor" id="r-repasse"></span></summary>
+          <fieldset>
+            <legend class="so-leitor">Como tratar a diferença de imposto</legend>
+            <label class="marca">
+              <input type="radio" name="repasse" value="liquido" checked>
+              <span>Repassar e manter meu valor líquido</span>
+            </label>
+            <label class="marca">
+              <input type="radio" name="repasse" value="preco">
+              <span>Manter o preço e absorver a diferença</span>
+            </label>
+          </fieldset>
+        </details>
+
+        <details id="aliquotas">
+          <summary><span>Alíquotas da reforma</span><span class="ajustes__valor" id="r-aliquotas"></span></summary>
+          <p class="ajuda">A CBS de 2027 é proposta do TCU, sujeita ao Senado. Os demais anos são projeção.</p>
+          <fieldset>
+            <legend>CBS de referência</legend>
+            <div class="grade" id="grade-cbs"></div>
+          </fieldset>
+          <fieldset>
+            <legend>IBS pleno</legend>
+            <div class="grade" id="grade-ibs"></div>
+            <p class="ajuda">A transição aplica 10% em 2029, 20% em 2030, 30% em 2031, 40% em 2032 e 100% em 2033.</p>
+          </fieldset>
+          <div class="campo" id="campo-salario" hidden>
+            <label for="salarioMinimo">Salário mínimo (base do INSS do MEI)</label>
+            <div class="entrada">
+              <span class="entrada__pre" aria-hidden="true">R$</span>
+              <input id="salarioMinimo" type="text" inputmode="decimal" data-tipo="dinheiro">
+            </div>
+          </div>
+          <button type="button" class="btn" id="restaurar">Restaurar valores</button>
+        </details>
+      </div>
+    </form>
+
+    <section class="resultado" id="resultado" tabindex="-1" aria-labelledby="t-resultado">
+      <div class="titulo-linha">
+        <h2 id="t-resultado">Imposto por mês</h2>
+        <p id="escopo"></p>
+      </div>
+
+      <div class="faixa" id="manchete" aria-live="polite"></div>
+
+      <p class="so-impressao nota" id="resumo-impressao"></p>
+
+      <div id="conteudo" class="conteudo" hidden>
+        <ul class="avisos" id="avisos"></ul>
+
+        <section class="bloco" aria-labelledby="t-tabela">
+          <div class="bloco__topo">
+            <h3 id="t-tabela">Ano a ano</h3>
+            <ul class="legenda" aria-hidden="true">
+              <li class="legenda__item legenda__item--antigos">Tributos antigos</li>
+              <li class="legenda__item legenda__item--cbs">CBS</li>
+              <li class="legenda__item legenda__item--ibs">IBS</li>
+              <li class="legenda__item legenda__item--outros">Outros</li>
+            </ul>
+          </div>
+          <div class="rolagem" id="rolagem-tabela" tabindex="0" role="region" aria-labelledby="t-tabela"></div>
+          <ul class="notas" id="notas-tabela"></ul>
+        </section>
+
+        <div class="bloco duplo">
+          <section aria-labelledby="t-interf">
+            <div class="bloco__topo"><h3 id="t-interf">O que interfere</h3></div>
+            <p class="nota" id="interf-ref"></p>
+            <ul class="interf" id="interf"></ul>
+            <div id="interf-mais"></div>
+            <p class="nota sem-efeito" id="sem-efeito" hidden></p>
+          </section>
+
+          <section aria-labelledby="t-detalhe">
+            <div class="bloco__topo"><h3 id="t-detalhe">Tributos</h3></div>
+            <p class="nota" id="anexo-ano" hidden></p>
+            <div id="detalhe"></div>
+          </section>
+        </div>
+
+        <div class="bloco duplo" id="sec-comparativo" hidden>
+          <section aria-labelledby="t-comparativo">
+            <div class="bloco__topo"><h3 id="t-comparativo">Simples tradicional e híbrido</h3></div>
+            <div class="rolagem" id="rolagem-comparativo" tabindex="0" role="region" aria-labelledby="t-comparativo"></div>
+          </section>
+          <section aria-labelledby="t-leitura">
+            <div class="bloco__topo"><h3 id="t-leitura">Como ler a comparação</h3></div>
+            <div class="leitura" id="comp-leitura"></div>
+          </section>
+        </div>
+
+        <div class="bloco duplo duplo--estudo" id="sec-estudo" hidden>
+          <section aria-labelledby="t-estudo">
+            <div class="bloco__topo"><h3 id="t-estudo">Estudo de mudança para o híbrido</h3></div>
+            <p class="nota">Parte do Simples tradicional com o mesmo volume de vendas. Cliente com crédito paga até manter o custo real de hoje. Cliente sem crédito paga o preço atual.</p>
+            <div class="rolagem" id="estudo-cenarios" tabindex="0" role="region" aria-labelledby="t-estudo"></div>
+
+            <h4 id="t-possibilidades">Possibilidades</h4>
+            <p class="nota">Ganho ou perda por mês ao mudar, cobrando o maior preço que cada cliente aceita.</p>
+            <div class="rolagem" id="estudo-matriz" tabindex="0" role="region" aria-labelledby="t-possibilidades"></div>
+          </section>
+          <section aria-labelledby="t-compensar">
+            <div class="bloco__topo"><h3 id="t-compensar">Faturamento para compensar</h3></div>
+            <p class="estudo__valor" id="estudo-valor"></p>
+            <p class="nota" id="estudo-sub"></p>
+            <div class="leitura estudo__leitura" id="estudo-leitura"></div>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="metodo" id="metodo">
+    <h2>Como calculamos</h2>
+    <div class="metodo__colunas">
+      <section>
+        <h3>Premissas</h3>
+        <p>O resultado é uma estimativa e não substitui o trabalho do contador. A CBS de 2027, de 11,3%, é proposta do TCU. O IBS pleno de 18,7% é projeção do Comitê Gestor. As tabelas do Simples vêm da LC 214/2025. O ICMS por estado vem de tabela pública. O estudo do híbrido é uma simulação: ele não prevê a reação dos clientes.</p>
+      </section>
+      <section>
+        <h3>Fora do cálculo</h3>
+        <p>Substituição tributária, DIFAL, benefícios estaduais, regimes específicos detalhados, Imposto Seletivo e split payment. A CPP usa 20% da folha, sem RAT e terceiros.</p>
+      </section>
+      <section>
+        <h3>Privacidade</h3>
+        <p>O cálculo roda no seu navegador. A página não grava nem envia o que você digita. A Vercel, que hospeda o site, registra logs técnicos de acesso, como endereço IP.</p>
+      </section>
+      <section>
+        <h3>Fontes</h3>
+        <ul>
+          <li><a href="https://www2.camara.leg.br/legin/fed/leicom/2025/leicomplementar-214-16-janeiro-2025-796905-normaatualizada-pl.pdf" target="_blank" rel="noopener noreferrer">LC 214/2025, texto atualizado</a></li>
+          <li><a href="https://www2.camara.leg.br/legin/fed/leicom/2026/leicomplementar-227-13-janeiro-2026-798657-publicacaooriginal-177770-pl.html" target="_blank" rel="noopener noreferrer">LC 227/2026</a></li>
+          <li><a href="https://www12.senado.leg.br/noticias/materias/2026/10/28/reforma-tributaria-tcu-calcula-aliquota-da-cbs-em-11-3-para-2027" target="_blank" rel="noopener noreferrer">Senado: TCU calcula a CBS em 11,3%</a></li>
+        </ul>
+      </section>
+    </div>
+  </footer>
+
+  <a class="fixo" id="fixo" href="#resultado" hidden><span id="fixo-texto"></span><span>Ver resultado</span></a>
+</body>
+</html>
